@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GPS Tracking System with HERE API</title>
+    <style>
+        #map {
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <button onclick="getLocationAndAddress()">Get Location and Address</button>
+    <p id="coordinates"></p>
+    <p id="address"></p>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js" type="text/javascript" charset="utf-8"></script>
+    <script>
+        let map;
+        let marker;
+
+        // Initialize the map after the HERE API is fully loaded.
+        function initMap() {
+            const platform = new H.service.Platform({
+                'apikey': 'lZ-MQ_MioQIqiuLmFH9DDgIJT4vlCkFJ2uXGZPULWHw'
+            });
+            const defaultLayers = platform.createDefaultLayers();
+            map = new H.Map(
+                document.getElementById('map'),
+                defaultLayers.vector.normal.map,
+                { zoom: 8, center: { lat: 0, lng: 0 } }
+            );
+
+            marker = new H.map.Marker({ lat: 0, lng: 0 });
+            map.addObject(marker);
+        }
+
+        // Get the location and address after the map is fully initialized.
+        async function getLocationAndAddress() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(async function (position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    const coordinates = `Latitude: ${lat}, Longitude: ${lng}`;
+                    document.getElementById('coordinates').textContent = coordinates;
+
+                    const location = { lat, lng };
+                    map.setCenter(location);
+                    marker.setGeometry(location);
+
+                    // Use the HERE API to reverse geocode and get the address
+                    const apiUrl = `https://reverse.geocoder.ls.hereapi.com/6.2/reversegeocode.json?prox=${lat},${lng}&mode=retrieveAddresses&maxresults=1&gen=9&apiKey=lZ-MQ_MioQIqiuLmFH9DDgIJT4vlCkFJ2uXGZPULWHw`;
+                    
+                    fetch(apiUrl)
+                        .then(response => response.json())
+                        .then(data => {
+                            const address = data.Response.View[0].Result[0].Location.Address.Label;
+                            document.getElementById('address').textContent = `Address: ${address}`;
+                        })
+                        .catch(error => {
+                            console.error('Error fetching address:', error);
+                            document.getElementById('address').textContent = 'Address not available';
+                        });
+                });
+            } else {
+                alert("Geolocation is not supported by your browser.");
+            }
+        }
+
+        // Load the map and execute the getLocationAndAddress function after the map is fully initialized.
+        window.addEventListener('load', () => {
+            initMap();
+        });
+    </script>
+</body>
+</html>
