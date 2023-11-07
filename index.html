@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Location Tracking with Map and Address</title>
+    <title>Location Tracking with Map and Periodic Address Update</title>
     <style>
         #map {
             height: 300px;
@@ -9,7 +9,7 @@
     </style>
 </head>
 <body>
-    <h1>Location Tracking with Map and Address</h1>
+    <h1>Location Tracking with Map and Periodic Address Update</h1>
     <button id="startButton">Start Tracking</button>
     <button id="stopButton">Stop Tracking</button>
     <p>Distance Traveled: <span id="distance">0 meters</span></p>
@@ -46,6 +46,9 @@
 
                 map = new google.maps.Map(document.getElementById("map"), mapOptions);
                 marker = new google.maps.Marker({ map: map });
+
+                // Set up periodic address update every 5 minutes (300,000 milliseconds)
+                setInterval(updateAddress, 300000);
             }
         }
 
@@ -70,16 +73,19 @@
             previousLocation = location;
             marker.setPosition(location);
             map.setCenter(location);
+        }
 
-            // Reverse geocode to get the address
-            var geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ 'location': location }, function(results, status) {
-                if (status === 'OK' && results[0]) {
-                    addressElement.textContent = results[0].formatted_address;
-                } else {
-                    addressElement.textContent = 'N/A';
-                }
-            });
+        function updateAddress() {
+            if (previousLocation) {
+                var geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ 'location': previousLocation }, function(results, status) {
+                    if (status === 'OK' && results[0]) {
+                        addressElement.textContent = results[0].formatted_address;
+                    } else {
+                        addressElement.textContent = 'N/A';
+                    }
+                });
+            }
         }
 
         function handleError(error) {
