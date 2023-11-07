@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Location Tracking with Map</title>
+    <title>Location Tracking with Map and Address</title>
     <style>
         #map {
             height: 300px;
@@ -9,10 +9,11 @@
     </style>
 </head>
 <body>
-    <h1>Location Tracking with Map</h1>
+    <h1>Location Tracking with Map and Address</h1>
     <button id="startButton">Start Tracking</button>
     <button id="stopButton">Stop Tracking</button>
     <p>Distance Traveled: <span id="distance">0 meters</span></p>
+    <p>Address: <span id="address">N/A</span></p>
     <div id="map"></div>
 
     <script>
@@ -23,6 +24,7 @@
         var map;
         var marker;
         var distanceElement = document.getElementById("distance");
+        var addressElement = document.getElementById("address");
 
         document.getElementById("startButton").addEventListener("click", startTracking);
         document.getElementById("stopButton").addEventListener("click", stopTracking);
@@ -68,6 +70,16 @@
             previousLocation = location;
             marker.setPosition(location);
             map.setCenter(location);
+
+            // Reverse geocode to get the address
+            var geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ 'location': location }, function(results, status) {
+                if (status === 'OK' && results[0]) {
+                    addressElement.textContent = results[0].formatted_address;
+                } else {
+                    addressElement.textContent = 'N/A';
+                }
+            });
         }
 
         function handleError(error) {
@@ -75,7 +87,7 @@
         }
     </script>
     <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFzlw87Pf_trlsQjEjUu-4eP9G7WpcLDc">
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFzlw87Pf_trlsQjEjUu-4eP9G7WpcLDc&libraries=geometry">
     </script>
 </body>
 </html>
