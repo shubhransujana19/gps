@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Location Tracking with Map</title>
+    <style>
+        #map {
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Location Tracking with Map</h1>
+    <button id="startButton">Start Tracking</button>
+    <button id="stopButton">Stop Tracking</button>
+    <p>Distance Traveled: <span id="distance">0 meters</span></p>
+    <div id="map"></div>
+
+    <script>
+        var tracking = false;
+        var watchId;
+        var previousLocation;
+        var totalDistance = 0;
+        var map;
+        var marker;
+        var distanceElement = document.getElementById("distance");
+
+        document.getElementById("startButton").addEventListener("click", startTracking);
+        document.getElementById("stopButton").addEventListener("click", stopTracking);
+
+        function startTracking() {
+            if (!tracking) {
+                tracking = true;
+                previousLocation = null;
+                totalDistance = 0;
+                distanceElement.textContent = "0 meters";
+
+                watchId = navigator.geolocation.watchPosition(updateLocation, handleError);
+
+                // Initialize the map
+                var mapOptions = {
+                    center: { lat: 0, lng: 0 },
+                    zoom: 16
+                };
+
+                map = new google.maps.Map(document.getElementById("map"), mapOptions);
+                marker = new google.maps.Marker({ map: map });
+            }
+        }
+
+        function stopTracking() {
+            if (tracking) {
+                tracking = false;
+                navigator.geolocation.clearWatch(watchId);
+            }
+        }
+
+        function updateLocation(position) {
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+            var location = new google.maps.LatLng(latitude, longitude);
+
+            if (previousLocation) {
+                var distance = google.maps.geometry.spherical.computeDistanceBetween(previousLocation, location);
+                totalDistance += distance;
+                distanceElement.textContent = `${totalDistance.toFixed(2)} meters`;
+            }
+
+            previousLocation = location;
+            marker.setPosition(location);
+            map.setCenter(location);
+        }
+
+        function handleError(error) {
+            console.error("Error getting location:", error.message);
+        }
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFzlw87Pf_trlsQjEjUu-4eP9G7WpcLDc">
+    </script>
+</body>
+</html>
