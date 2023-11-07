@@ -1,79 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>GPS Tracking System with HERE API</title>
+    <title>Employee Location</title>
     <style>
         #map {
-            width: 100%;
-            height: 400px;
+            height: 300px;
         }
     </style>
 </head>
 <body>
+    <h1>Employee Location</h1>
+    <p>Click the button to get the device location and address:</p>
+    <button onclick="getLocation()">Get Location and Address</button>
     <div id="map"></div>
-    <button onclick="getLocationAndAddress()">Get Location and Address</button>
-    <p id="coordinates"></p>
-    <p id="address"></p>
-    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js" type="text/javascript" charset="utf-8"></script>
-    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js" type="text/javascript" charset="utf-8"></script>
-    <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js" type="text/javascript" charset="utf-8"></script>
+    <div id="locationInfo"></div>
+
     <script>
-        let map;
-        let marker;
+        var map;
 
-        // Initialize the map after the HERE API is fully loaded.
         function initMap() {
-            const platform = new H.service.Platform({
-                'apikey': 'lZ-MQ_MioQIqiuLmFH9DDgIJT4vlCkFJ2uXGZPULWHw'
-            });
-            const defaultLayers = platform.createDefaultLayers();
-            map = new H.Map(
-                document.getElementById('map'),
-                defaultLayers.vector.normal.map,
-                { zoom: 8, center: { lat: 0, lng: 0 } }
-            );
-
-            marker = new H.map.Marker({ lat: 0, lng: 0 });
-            map.addObject(marker);
+            // This function will be called by the Google Maps API.
+            // Leave it empty for now.
         }
 
-        // Get the location and address after the map is fully initialized.
-        async function getLocationAndAddress() {
+        function getLocation() {
             if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(async function (position) {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var latitude = position.coords.latitude;
+                    var longitude = position.coords.longitude;
 
-                    const coordinates = `Latitude: ${lat}, Longitude: ${lng}`;
-                    document.getElementById('coordinates').textContent = coordinates;
-
-                    const location = { lat, lng };
-                    map.setCenter(location);
-                    marker.setGeometry(location);
-
-                    // Use the HERE API to reverse geocode and get the address
-                    const apiUrl = `https://reverse.geocoder.ls.hereapi.com/6.2/reversegeocode.json?prox=${lat},${lng}&mode=retrieveAddresses&maxresults=1&gen=9&apiKey=lZ-MQ_MioQIqiuLmFH9DDgIJT4vlCkFJ2uXGZPULWHw`;
+                    var locationInfo = document.getElementById("locationInfo");
                     
-                    fetch(apiUrl)
+                    // Use reverse geocoding to get the address
+                    var geocodingUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyAFzlw87Pf_trlsQjEjUu-4eP9G7WpcLDc`;
+                    fetch(geocodingUrl)
                         .then(response => response.json())
                         .then(data => {
-                            const address = data.Response.View[0].Result[0].Location.Address.Label;
-                            document.getElementById('address').textContent = `Address: ${address}`;
+                            if (data.status === "OK" && data.results.length > 0) {
+                                var address = data.results[0].formatted_address;
+                                locationInfo.innerHTML = "<strong>Address:</strong> " + address;
+                            }
                         })
                         .catch(error => {
-                            console.error('Error fetching address:', error);
-                            document.getElementById('address').textContent = 'Address not available';
+                            console.error("Error:", error);
                         });
+
+                    // Display the location on a map
+                    var location = { lat: latitude, lng: longitude };
+                    map = new google.maps.Map(document.getElementById('map'), {
+                        center: location,
+                        zoom: 16
+                    });
+
+                    var marker = new google.maps.Marker({
+                        position: location,
+                        map: map
+                    });
                 });
             } else {
-                alert("Geolocation is not supported by your browser.");
+                var locationInfo = document.getElementById("locationInfo");
+                locationInfo.innerHTML = "Geolocation is not supported by your browser.";
             }
         }
+    </script>
 
-        // Load the map and execute the getLocationAndAddress function after the map is fully initialized.
-        window.addEventListener('load', () => {
-            initMap();
-        });
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFzlw87Pf_trlsQjEjUu-4eP9G7WpcLDc&callback=initMap">
     </script>
 </body>
 </html>
