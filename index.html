@@ -131,31 +131,35 @@
         }
 
         function sendLocationDataToServer(location, status) {
-        fetch('http://localhost:91/pf/server.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                latitude: location.lat(),
-                longitude: location.lng(),
-                timestamp: new Date(),
-                mappingStatus: status,
-                clientName: currentClientName,
-            }),
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Data sent to the server:', data);
-        })
-        .catch(error => {
-            console.error('Error sending data to the server:', error);
-        });
+        if (location && location.lat && location.lng) {
+            fetch('http://localhost:91/pf/server.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    latitude: location.lat(),
+                    longitude: location.lng(),
+                    timestamp: new Date(),
+                    mappingStatus: status,
+                    clientName: currentClientName,
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data sent to the server:', data);
+            })
+            .catch(error => {
+                console.error('Error sending data to the server:', error);
+            });
+        } else {
+            console.error('Invalid location object. Data not sent to the server.');
+        }
     }
         function handleError(error) {
             console.error("Error getting location:", error.message);
