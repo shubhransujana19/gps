@@ -4,15 +4,38 @@
     <title>Location Tracking with Messages</title>
     <style>
         #map {
-            height: 300px;
+            height: 400px;
+        }
+        #startButton {
+            margin: 15px;
+            font-size: 45px;
+            padding: 5px;
+            background-color: yellowgreen;
+            color: #fefefe;
+        }
+        #stopButton {
+            margin: 15px;
+            font-size: 45px;
+            padding: 5px;
+            background-color: crimson;
+            color: #fefefe;
+        }
+        #address {
+            margin: 15px;
+            font-size: 20px;
+            padding: 5px;
+            background-color: darkcyan;
+            color: #fefefe;
         }
     </style>
 </head>
 <body>
     <h1>Location Tracking System</h1>
+    <label for="clientName">Client's Name:</label>
+    <input type="text" id="clientName">
     <button id="startButton">Start Tracking</button>
     <button id="stopButton" disabled>Stop Tracking</button>
-    <p>Distance Traveled: <span id="distance">0 meters</span></p>
+    <p>Distance Traveled: <span id="distance">0 kilometers</span></p>
     <p>Address: <span id="address">N/A</span></p>
     <p id="trackingStatus">Tracking is not active</p>
     <div id="map"></div>
@@ -27,6 +50,7 @@
         var distanceElement = document.getElementById("distance");
         var addressElement = document.getElementById("address");
         var trackingStatusElement = document.getElementById("trackingStatus");
+        var currentClientName;
 
         document.getElementById("startButton").addEventListener("click", startTracking);
         document.getElementById("stopButton").addEventListener("click", stopTracking);
@@ -36,8 +60,11 @@
                 tracking = true;
                 previousLocation = null;
                 totalDistance = 0;
-                distanceElement.textContent = "0 meters";
+                distanceElement.textContent = "0 kilometers";
                 trackingStatusElement.textContent = "Tracking is active";
+
+                // Get the client name
+                currentClientName = document.getElementById("clientName").value;
 
                 watchId = navigator.geolocation.watchPosition(updateLocation, handleError);
 
@@ -52,6 +79,11 @@
 
                 map = new google.maps.Map(document.getElementById("map"), mapOptions);
                 marker = new google.maps.Marker({ map: map });
+
+                // Send location data to the server every 30 seconds
+                setInterval(function() {
+                    sendLocationDataToServer(previousLocation, "Active");
+                }, 30000); // 30 seconds interval
             }
         }
 
@@ -60,6 +92,10 @@
                 tracking = false;
                 navigator.geolocation.clearWatch(watchId);
                 trackingStatusElement.textContent = "Tracking is not active";
+
+                // Send a final data point to the server
+                sendLocationDataToServer(previousLocation, "Stopped");
+                previousLocation = null;
 
                 document.getElementById("startButton").disabled = false;
                 document.getElementById("stopButton").disabled = true;
@@ -74,24 +110,51 @@
             if (previousLocation) {
                 var distance = google.maps.geometry.spherical.computeDistanceBetween(previousLocation, location);
                 totalDistance += distance;
-                distanceElement.textContent = `${totalDistance.toFixed(2)} meters`;
+                distanceElement.textContent = `${(totalDistance / 1000).toFixed(2)} kilometers`;
             }
 
             previousLocation = location;
             marker.setPosition(location);
             map.setCenter(location);
 
-            // Reverse geocode to get the address
             var geocoder = new google.maps.Geocoder();
             geocoder.geocode({ 'location': location }, function(results, status) {
                 if (status === 'OK' && results[0]) {
                     addressElement.textContent = results[0].formatted_address;
+                    sendLocationDataToServer(location, "Active");
                 } else {
                     addressElement.textContent = 'N/A';
                 }
             });
         }
 
+        function sendLocationDataToServer(location, status) {
+        fetch('server.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                latitude: location.lat(),
+                longitude: location.lng(),
+                timestamp: new Date(),
+                mappingStatus: status,
+                clientName: currentClientName,
+            }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Data sent to the server:', data);
+        })
+        .catch(error => {
+            console.error('Error sending data to the server:', error);
+        });
+    }
         function handleError(error) {
             console.error("Error getting location:", error.message);
         }
