@@ -1,14 +1,29 @@
-<?php  mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT); try { $con = new mysqli('localhost',  'admin', '', 'employee_tracking'); $con->set_charset('utf8mb4');} catch(Exception $e) { error_log($e->getMessage());}  ?>
-
 <?php
+
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+try {
+    $con = new mysqli('localhost', 'admin', '', 'employee_tracking');
+    $con->set_charset('utf8mb4');
+} catch (Exception $e) {
+    error_log($e->getMessage());
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Extract and validate the received data (latitude, longitude, timestamp, address, mapping status, client name)
-    $latitude = isset($_POST['latitude']) ? $_POST['latitude'] : null;
-    $longitude = isset($_POST['longitude']) ? $_POST['longitude'] : null;
-    $timestamp = isset($_POST['timestamp']) ? $_POST['timestamp'] : null;
-    $address = isset($_POST['address']) ? $_POST['address'] : null;
-    $mappingStatus = isset($_POST['mappingStatus']) ? $_POST['mappingStatus'] : null;
-    $clientName = isset($_POST['clientName']) ? $_POST['clientName'] : null;
+    // Get the raw POST data
+    $input = file_get_contents("php://input");
+
+    // Decode the JSON data
+    $data = json_decode($input, true);
+
+    // Extract and validate the received data
+    $latitude = isset($data['latitude']) ? $data['latitude'] : null;
+    $longitude = isset($data['longitude']) ? $data['longitude'] : null;
+    $timestamp = isset($data['timestamp']) ? $data['timestamp'] : null;
+    $mappingStatus = isset($data['mappingStatus']) ? $data['mappingStatus'] : null;
+    $clientName = isset($data['clientName']) ? $data['clientName'] : null;
+    $address = isset($data['address']) ? $data['address'] : null;
+    $totalDistance = isset($data['totalDistance']) ? $data['totalDistance'] : 0;
 
     // Get the current date in the format YYYY-MM-DD
     $currentDate = date('Y-m-d');
@@ -20,27 +35,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die("Connection failed: " . $connection->connect_error);
     }
 
-    // Prepare the SQL statement
-    $sql = "INSERT INTO tracking_data (latitude, longitude, timestamp, address, mapping_status, client_name, date)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-            latitude = VALUES(latitude),
-            longitude = VALUES(longitude),
-            timestamp = VALUES(timestamp),
-            address = VALUES(address),
-            mapping_status = VALUES(mapping_status)";
+    // Check if record with client name and date already exists
+    $checkQuery = "SELECT * FROM tracking_data WHERE client_name = ? AND date = ?";
+    $checkStmt = $connection->prepare($checkQuery);
+    $checkStmt->bind_param("ss", $clientName, $currentDate);
+    $checkStmt->execute();
+    $checkResult = $checkStmt->get_result();
 
-    $stmt = $connection->prepare($sql);
-    $stmt->bind_param("ddsssss", $latitude, $longitude, $timestamp, $address, $mappingStatus, $clientName, $currentDate);
+    if ($checkResult->num_rows > 0) {
+        // Record exists, perform update
+        $updateQuery = "UPDATE tracking_data 
+                        SET latitude = ?, longitude = ?, timestamp = ?, mapping_status = ?, address = ?, total_distance = ?
+                        WHERE client_name = ? AND date = ?";
+        $updateStmt = $connection->prepare($updateQuery);
+        $updateStmt->bind_param("ddsssdss", $latitude, $longitude, $timestamp, $mappingStatus, $address, $totalDistance, $clientName, $currentDate);
+        $updateResult = $updateStmt->execute();
 
-    if ($stmt->execute()) {
-        echo "Data received and stored successfully.";
+        if ($updateResult) {
+            echo "Data updated successfully.";
+        } else {
+            echo "Error updating data: " . $updateStmt->error;
+        }
+
+        $updateStmt->close();
     } else {
-        echo "Error storing data: " . $connection->error;
+        // Record does not exist, perform insert
+        $insertQuery = "INSERT INTO tracking_data (latitude, longitude, initial_latitude, initial_longitude, timestamp, mapping_status, client_name, date, starting_address, total_distance)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $insertStmt = $connection->prepare($insertQuery);
+        $insertStmt->bind_param("ddddsssssd", $latitude, $longitude, $latitude, $longitude, $timestamp, $mappingStatus, $clientName, $currentDate, $address, $totalDistance);
+        $insertResult = $insertStmt->execute();
+
+        if ($insertResult) {
+            echo "Data inserted successfully.";
+        } else {
+            echo "Error inserting data: " . $insertStmt->error;
+        }
+
+        $insertStmt->close();
     }
 
     // Close the database connection
-    $stmt->close();
+    $checkStmt->close();
     $connection->close();
 } else {
     echo "Invalid request method.";
