@@ -1,5 +1,11 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300&display=swap" rel="stylesheet"> 
+    <script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"> </script> 
+
 <head>
     <title>Location Tracking with Messages</title>
     <style>
@@ -22,13 +28,51 @@
             background-color: crimson;
             color: #fefefe;
         }
+        #distance_travelled{
+            width: fit-content;
+            margin: 15px;
+            font-size: 22px;
+            padding: 5px;
+            background-color:goldenrod;
+            color: #fefefe;
+        }
+        #distance{
+            width: fit-content;
+            margin: 15px;
+            font-size: 20px;
+            padding: 5px;
+            background-color:goldenrod;
+            color: #fefefe;
+        }
         #address {
+            width: fit-content;
             margin: 15px;
             font-size: 20px;
             padding: 5px;
             background-color: darkcyan;
             color: #fefefe;
         }
+        #locationInfo {
+            width: fit-content;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        #current_location{
+            margin: 15px;
+            font-size: 22px;
+            padding: 5px;
+            background-color: darkcyan;
+            color: #fefefe;
+        }
+        #trackingStatus{
+            width: fit-content;
+            margin: 15px;
+            font-size: 22px;
+            padding: 5px;
+            background-color:darkgreen;
+            color: #fefefe;
+        }
+        
     </style>
 </head>
 <body>
@@ -37,10 +81,11 @@
     <input type="text" id="clientName"><br>
     <button id="startButton">Start Tracking</button>
     <button id="stopButton" disabled>Stop Tracking</button>
-    <p>Distance Traveled: <span id="distance">0 kilometers</span></p>
-    <p>Address: <span id="address">N/A</span></p>
+    <p> <span id="distance_travelled"> Distance Traveled:</span> <span id="distance">0 kilometers</span></p>
+    <p><span id="current_location"> Current Location: </span><span id="address">N/A</span></p>
     <p id="trackingStatus">Tracking is not active</p>
     <div id="map"></div>
+    <!-- <div id="locationInfo">Latitude: N/A, Longitude: N/A</div> -->
 
     <script>
         var tracking = false;
@@ -52,6 +97,7 @@
         var distanceElement = document.getElementById("distance");
         var addressElement = document.getElementById("address");
         var trackingStatusElement = document.getElementById("trackingStatus");
+        var locationInfoElement = document.getElementById("locationInfo");
         var currentClientName;
 
         document.getElementById("startButton").addEventListener("click", startTracking);
@@ -85,7 +131,7 @@
                 // Send location data to the server every 30 seconds
                 setInterval(function() {
                     sendLocationDataToServer(previousLocation, "Active");
-                }, 30000); // 30 seconds interval
+                }, 5000); // 30 seconds interval
             }
         }
 
@@ -123,44 +169,50 @@
             geocoder.geocode({ 'location': location }, function(results, status) {
                 if (status === 'OK' && results[0]) {
                     addressElement.textContent = results[0].formatted_address;
-                    sendLocationDataToServer(location, "Active");
                 } else {
                     addressElement.textContent = 'N/A';
                 }
+
+                // Update the location info
+                locationInfoElement.textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
             });
         }
 
+
         function sendLocationDataToServer(location, status) {
+        console.log('Sending data to the server:', location, status); // Log location and status
+
         if (location && location.lat && location.lng) {
-            fetch('http://localhost:91/pf/server.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    latitude: location.lat(),
-                    longitude: location.lng(),
-                    timestamp: new Date(),
-                    mappingStatus: status,
-                    clientName: currentClientName,
-                }),
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Data sent to the server:', data);
-            })
-            .catch(error => {
-                console.error('Error sending data to the server:', error);
-            });
+            var latitude = location.lat();
+            var longitude = location.lng();
+
+            if (!isNaN(latitude) && !isNaN(longitude)) {
+                $.ajax({
+                    url: 'http://localhost:91/pf/server.php',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        latitude: latitude,
+                        longitude: longitude,
+                        timestamp: new Date(),
+                        mappingStatus: status,
+                        clientName: currentClientName,
+                    }),
+                    success: function (data) {
+                        console.log('Data sent to the server:', data);
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error sending data to the server:', error);
+                    }
+                });
+            } else {
+                console.error('Invalid latitude or longitude values. Data not sent to the server.');
+            }
         } else {
             console.error('Invalid location object. Data not sent to the server.');
         }
     }
+
         function handleError(error) {
             console.error("Error getting location:", error.message);
         }
