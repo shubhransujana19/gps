@@ -1,17 +1,17 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
+<head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300&display=swap" rel="stylesheet"> 
-    <script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"> </script> 
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300&display=swap" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
 
-<head>
     <title>Location Tracking with Messages</title>
     <style>
         #map {
             height: 400px;
         }
+
         #startButton {
             margin: 15px;
             font-size: 35px;
@@ -20,6 +20,7 @@
             background-color: yellowgreen;
             color: #fefefe;
         }
+
         #stopButton {
             margin: 15px;
             font-size: 35px;
@@ -28,22 +29,25 @@
             background-color: crimson;
             color: #fefefe;
         }
-        #distance_travelled{
+
+        #distance_travelled {
             width: fit-content;
             margin: 15px;
             font-size: 22px;
             padding: 5px;
-            background-color:goldenrod;
+            background-color: goldenrod;
             color: #fefefe;
         }
-        #distance{
+
+        #distance {
             width: fit-content;
             margin: 15px;
             font-size: 20px;
             padding: 5px;
-            background-color:goldenrod;
+            background-color: goldenrod;
             color: #fefefe;
         }
+
         #address {
             width: fit-content;
             margin: 15px;
@@ -52,135 +56,136 @@
             background-color: darkcyan;
             color: #fefefe;
         }
+
         #locationInfo {
             width: fit-content;
             font-size: 16px;
             font-weight: bold;
         }
-        #current_location{
+
+        #current_location {
             margin: 15px;
             font-size: 22px;
             padding: 5px;
             background-color: darkcyan;
             color: #fefefe;
         }
-        #trackingStatus{
+
+        #trackingStatus {
             width: fit-content;
             margin: 15px;
             font-size: 22px;
             padding: 5px;
-            background-color:darkgreen;
+            background-color: darkgreen;
             color: #fefefe;
         }
-        
     </style>
 </head>
+
 <body>
-    <h1>Location Tracking System</h1>
-    <label for="clientName">Client's Name:</label>
-    <input type="text" id="clientName"><br>
-    <button id="startButton">Start Tracking</button>
-    <button id="stopButton" disabled>Stop Tracking</button>
-    <p> <span id="distance_travelled"> Distance Traveled:</span> <span id="distance">0 kilometers</span></p>
-    <p><span id="current_location"> Current Location: </span><span id="address">N/A</span></p>
-    <p id="trackingStatus">Tracking is not active</p>
-    <div id="map"></div>
-    <!-- <div id="locationInfo">Latitude: N/A, Longitude: N/A</div> -->
+<h1>Location Tracking System</h1>
+<label for="clientName">Client's Name:</label>
+<input type="text" id="clientName"><br>
+<button id="startButton">Start Tracking</button>
+<button id="stopButton" disabled>Stop Tracking</button>
+<p> <span id="distance_travelled"> Distance Traveled:</span> <span id="distance">0 kilometers</span></p>
+<p><span id="current_location"> Current Location: </span><span id="address">N/A</span></p>
+<p id="trackingStatus">Tracking is not active</p>
+<div id="map"></div>
 
-    <script>
-        var tracking = false;
-        var watchId;
-        var previousLocation;
-        var totalDistance = 0;
-        var map;
-        var marker;
-        var distanceElement = document.getElementById("distance");
-        var addressElement = document.getElementById("address");
-        var trackingStatusElement = document.getElementById("trackingStatus");
-        var locationInfoElement = document.getElementById("locationInfo");
-        var currentClientName;
+<script>
+    var tracking = false;
+    var watchId;
+    var previousLocation;
+    var totalDistance = 0;
+    var map;
+    var marker;
+    var distanceElement = document.getElementById("distance");
+    var addressElement = document.getElementById("address");
+    var trackingStatusElement = document.getElementById("trackingStatus");
+    var locationInfoElement = document.getElementById("locationInfo");
+    var currentClientName;
 
-        document.getElementById("startButton").addEventListener("click", startTracking);
-        document.getElementById("stopButton").addEventListener("click", stopTracking);
+    document.getElementById("startButton").addEventListener("click", startTracking);
+    document.getElementById("stopButton").addEventListener("click", stopTracking);
 
-        function startTracking() {
-            if (!tracking) {
-                tracking = true;
-                previousLocation = null;
-                totalDistance = 0;
-                distanceElement.textContent = "0 kilometers";
-                trackingStatusElement.textContent = "Tracking is active";
+    function startTracking() {
+        if (!tracking) {
+            tracking = true;
+            previousLocation = null;
+            totalDistance = 0;
+            distanceElement.textContent = "0 kilometers";
+            trackingStatusElement.textContent = "Tracking is active";
 
-                // Get the client name
-                currentClientName = document.getElementById("clientName").value;
+            // Get the client name
+            currentClientName = document.getElementById("clientName").value;
 
-                watchId = navigator.geolocation.watchPosition(updateLocation, handleError);
+            watchId = navigator.geolocation.watchPosition(updateLocation, handleError);
 
-                document.getElementById("startButton").disabled = true;
-                document.getElementById("stopButton").disabled = false;
+            document.getElementById("startButton").disabled = true;
+            document.getElementById("stopButton").disabled = false;
 
-                // Initialize the map
-                var mapOptions = {
-                    center: { lat: 0, lng: 0 },
-                    zoom: 16
-                };
+            // Initialize the map
+            var mapOptions = {
+                center: {lat: 0, lng: 0},
+                zoom: 16
+            };
 
-                map = new google.maps.Map(document.getElementById("map"), mapOptions);
-                marker = new google.maps.Marker({ map: map });
+            map = new google.maps.Map(document.getElementById("map"), mapOptions);
+            marker = new google.maps.Marker({map: map});
 
-                // Send location data to the server every 30 seconds
-                setInterval(function() {
-                    sendLocationDataToServer(previousLocation, "Active");
-                }, 5000); // 30 seconds interval
-            }
+            // Send location data to the server every 30 seconds
+            setInterval(function () {
+                sendLocationDataToServer(previousLocation, "Active", addressElement.textContent, totalDistance);
+            }, 5000); // 30 seconds interval
+        }
+    }
+
+    function stopTracking() {
+    if (tracking) {
+        tracking = false;
+        navigator.geolocation.clearWatch(watchId);
+        trackingStatusElement.textContent = "Tracking is not active";
+
+        // Send a final data point to the server
+        sendLocationDataToServer(previousLocation, "Stopped", addressElement.textContent, totalDistance);
+        previousLocation = null;
+
+        document.getElementById("startButton").disabled = false;
+        document.getElementById("stopButton").disabled = true;
+    }
+}
+
+    function updateLocation(position) {
+        var latitude = position.coords.latitude;
+        var longitude = position.coords.longitude;
+        var location = new google.maps.LatLng(latitude, longitude);
+
+        if (previousLocation) {
+            var distance = google.maps.geometry.spherical.computeDistanceBetween(previousLocation, location);
+            totalDistance += distance;
+            distanceElement.textContent = `${(totalDistance / 1000).toFixed(2)} kilometers`;
         }
 
-        function stopTracking() {
-            if (tracking) {
-                tracking = false;
-                navigator.geolocation.clearWatch(watchId);
-                trackingStatusElement.textContent = "Tracking is not active";
+        previousLocation = location;
+        marker.setPosition(location);
+        map.setCenter(location);
 
-                // Send a final data point to the server
-                sendLocationDataToServer(previousLocation, "Stopped");
-                previousLocation = null;
-
-                document.getElementById("startButton").disabled = false;
-                document.getElementById("stopButton").disabled = true;
-            }
-        }
-
-        function updateLocation(position) {
-            var latitude = position.coords.latitude;
-            var longitude = position.coords.longitude;
-            var location = new google.maps.LatLng(latitude, longitude);
-
-            if (previousLocation) {
-                var distance = google.maps.geometry.spherical.computeDistanceBetween(previousLocation, location);
-                totalDistance += distance;
-                distanceElement.textContent = `${(totalDistance / 1000).toFixed(2)} kilometers`;
+        var geocoder = new google.maps.Geocoder();
+        geocoder.geocode({'location': location}, function (results, status) {
+            if (status === 'OK' && results[0]) {
+                addressElement.textContent = results[0].formatted_address;
+            } else {
+                addressElement.textContent = 'N/A';
             }
 
-            previousLocation = location;
-            marker.setPosition(location);
-            map.setCenter(location);
+            // Update the location info
+            //   locationInfoElement.textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
+        });
+    }
 
-            var geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ 'location': location }, function(results, status) {
-                if (status === 'OK' && results[0]) {
-                    addressElement.textContent = results[0].formatted_address;
-                } else {
-                    addressElement.textContent = 'N/A';
-                }
-
-                // Update the location info
-                locationInfoElement.textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
-            });
-        }
-
-
-        function sendLocationDataToServer(location, status) {
-        console.log('Sending data to the server:', location, status); // Log location and status
+    function sendLocationDataToServer(location, status, address, totalDistance) {
+        console.log('Sending data to the server:', location, status, address, totalDistance); // Log location, status, address, and totalDistance
 
         if (location && location.lat && location.lng) {
             var latitude = location.lat();
@@ -197,6 +202,8 @@
                         timestamp: new Date(),
                         mappingStatus: status,
                         clientName: currentClientName,
+                        address: address, // Include address in the data
+                        totalDistance: totalDistance, // Include totalDistance in the data
                     }),
                     success: function (data) {
                         console.log('Data sent to the server:', data);
@@ -213,12 +220,12 @@
         }
     }
 
-        function handleError(error) {
-            console.error("Error getting location:", error.message);
-        }
-    </script>
-    <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFzlw87Pf_trlsQjEjUu-4eP9G7WpcLDc&libraries=geometry">
-    </script>
+    function handleError(error) {
+        console.error("Error getting location:", error.message);
+    }
+</script>
+<script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFzlw87Pf_trlsQjEjUu-4eP9G7WpcLDc&libraries=geometry">
+</script>
 </body>
 </html>
