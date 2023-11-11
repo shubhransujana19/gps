@@ -1,5 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
+
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,7 +52,7 @@
         #address {
             width: fit-content;
             margin: 15px;
-            font-size: 20px;
+            font-size: 15px;
             padding: 5px;
             background-color: darkcyan;
             color: #fefefe;
@@ -65,7 +66,7 @@
 
         #current_location {
             margin: 15px;
-            font-size: 22px;
+            font-size: 18px;
             padding: 5px;
             background-color: darkcyan;
             color: #fefefe;
@@ -83,88 +84,106 @@
 </head>
 
 <body>
-<h1>Location Tracking System</h1>
-<label for="clientName">Client's Name:</label>
-<input type="text" id="clientName"><br>
-<button id="startButton">Start Tracking</button>
-<button id="stopButton" disabled>Stop Tracking</button>
-<p> <span id="distance_travelled"> Distance Traveled:</span> <span id="distance">0 kilometers</span></p>
-<p><span id="current_location"> Current Location: </span><span id="address">N/A</span></p>
-<p id="trackingStatus">Tracking is not active</p>
-<div id="map"></div>
+    <h1>Location Tracking System</h1>
+    <label for="clientName">Client's Name:</label>
+    <input type="text" id="clientName"><br>
+    <button id="startButton">Start Tracking</button>
+    <button id="stopButton" disabled>Stop Tracking</button>
+    <p> <span id="distance_travelled"> Distance Traveled:</span> <span id="distance">0 kilometers</span></p>
+    <p><span id="current_location"> Current Location: </span><span id="address">N/A</span></p>
+    <p id="trackingStatus">Tracking is not active</p>
+    <div id="map"></div>
 
-<script>
-    var tracking = false;
-    var watchId;
-    var previousLocation;
-    var totalDistance = 0;
-    var map;
-    var marker;
-    var distanceElement = document.getElementById("distance");
-    var addressElement = document.getElementById("address");
-    var trackingStatusElement = document.getElementById("trackingStatus");
-    var locationInfoElement = document.getElementById("locationInfo");
-    var currentClientName;
+    <script>
+        var tracking = false;
+        var watchId;
+        var previousLocation;
+        var initialLocation;
+        var totalDistance = 0;
+        var map;
+        var marker;
+        var polyline; // Variable to store the polyline
+        var initialTotalDistance = 0; // Variable to store the initial total distance
+        var allRecordedLocations = []; // Array to store all recorded locations
 
-    document.getElementById("startButton").addEventListener("click", startTracking);
-    document.getElementById("stopButton").addEventListener("click", stopTracking);
+        var distanceElement = document.getElementById("distance");
+        var addressElement = document.getElementById("address");
+        var trackingStatusElement = document.getElementById("trackingStatus");
+        var locationInfoElement = document.getElementById("locationInfo");
+        var currentClientName;
+        var currentDate;
 
-    function startTracking() {
-        if (!tracking) {
-            tracking = true;
-            previousLocation = null;
-            totalDistance = 0;
-            distanceElement.textContent = "0 kilometers";
-            trackingStatusElement.textContent = "Tracking is active";
 
-            // Get the client name
-            currentClientName = document.getElementById("clientName").value;
+        document.getElementById("startButton").addEventListener("click", startTracking);
+        document.getElementById("stopButton").addEventListener("click", stopTracking);
 
-            watchId = navigator.geolocation.watchPosition(updateLocation, handleError);
+        function startTracking() {
+            if (!tracking) {
+                tracking = true;
+                previousLocation = null;
+                totalDistance = 0;
+                distanceElement.textContent = "0 kilometers";
+                trackingStatusElement.textContent = "Tracking is active";
 
-            document.getElementById("startButton").disabled = true;
-            document.getElementById("stopButton").disabled = false;
+                // Get the client name and date
+                currentClientName = document.getElementById("clientName").value;
+                currentDate = getCurrentDate();
 
-            // Initialize the map
-            var mapOptions = {
-                center: {lat: 0, lng: 0},
-                zoom: 16
-            };
+                // Fetch the total distance for the current date
+                fetchTotalDistance(currentClientName, currentDate);
 
-            map = new google.maps.Map(document.getElementById("map"), mapOptions);
-            marker = new google.maps.Marker({map: map});
+                // Draw the polyline when starting tracking
+                fetchInitialLocation(currentClientName, currentDate);
 
-            // Send location data to the server every 30 seconds
-            setInterval(function () {
-                sendLocationDataToServer(previousLocation, "Active", addressElement.textContent, totalDistance);
-            }, 5000); // 30 seconds interval
+                watchId = navigator.geolocation.watchPosition(updateLocation, handleError);
+
+                document.getElementById("startButton").disabled = true;
+                document.getElementById("stopButton").disabled = false;
+
+                // Initialize the map
+                var mapOptions = {
+                    center: { lat: 0, lng: 0 },
+                    zoom: 16
+                };
+
+                map = new google.maps.Map(document.getElementById("map"), mapOptions);
+                marker = new google.maps.Marker({ map: map });
+
+                // Send location data to the server every 30 seconds
+                setInterval(function () {
+                    sendLocationDataToServer(previousLocation, "Active", addressElement.textContent, totalDistance);
+                }, 5000); // 30 seconds interval
+            }
         }
-    }
+        
+        
+        function stopTracking() {
+            if (tracking) {
+                tracking = false;
+                navigator.geolocation.clearWatch(watchId);
+                trackingStatusElement.textContent = "Tracking is not active";
 
-    function stopTracking() {
-    if (tracking) {
-        tracking = false;
-        navigator.geolocation.clearWatch(watchId);
-        trackingStatusElement.textContent = "Tracking is not active";
+                // Send a final data point to the server
+                sendLocationDataToServer(previousLocation, "Stopped", addressElement.textContent, totalDistance);
+                previousLocation = null;
 
-        // Send a final data point to the server
-        sendLocationDataToServer(previousLocation, "Stopped", addressElement.textContent, totalDistance);
-        previousLocation = null;
+                document.getElementById("startButton").disabled = false;
+                document.getElementById("stopButton").disabled = true;
+            }
+        }
 
-        document.getElementById("startButton").disabled = false;
-        document.getElementById("stopButton").disabled = true;
-    }
-}
-
-    function updateLocation(position) {
+        function updateLocation(position) {
         var latitude = position.coords.latitude;
         var longitude = position.coords.longitude;
         var location = new google.maps.LatLng(latitude, longitude);
 
+         // Add the current location to the array
+        allRecordedLocations.push(location);
+
         if (previousLocation) {
             var distance = google.maps.geometry.spherical.computeDistanceBetween(previousLocation, location);
             totalDistance += distance;
-            distanceElement.textContent = `${(totalDistance / 1000).toFixed(2)} kilometers`;
+            distanceElement.textContent = `${((initialTotalDistance + totalDistance) / 1000).toFixed(2)} kilometers`;
         }
 
         previousLocation = location;
@@ -172,60 +191,201 @@
         map.setCenter(location);
 
         var geocoder = new google.maps.Geocoder();
-        geocoder.geocode({'location': location}, function (results, status) {
+        geocoder.geocode({ 'location': location }, function (results, status) {
             if (status === 'OK' && results[0]) {
                 addressElement.textContent = results[0].formatted_address;
             } else {
                 addressElement.textContent = 'N/A';
             }
-
-            // Update the location info
-            //   locationInfoElement.textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
         });
+
+        // Draw the entire path with the updated array of locations
+        drawPolyline(allRecordedLocations);
+
+        // Send location data to the server with total distance
+        sendLocationDataToServer(previousLocation, "Active", addressElement.textContent, totalDistance);
     }
 
-    function sendLocationDataToServer(location, status, address, totalDistance) {
-        console.log('Sending data to the server:', location, status, address, totalDistance); // Log location, status, address, and totalDistance
 
-        if (location && location.lat && location.lng) {
-            var latitude = location.lat();
-            var longitude = location.lng();
+    function drawPolyline(path) {
+            if (polyline) {
+                polyline.setMap(null); // Clear the previous polyline
+            }
 
-            if (!isNaN(latitude) && !isNaN(longitude)) {
+            polyline = new google.maps.Polyline({
+                path: path,
+                geodesic: true,
+                strokeColor: '#FF0000', // Red color for the track
+                strokeOpacity: 3.0,
+                strokeWeight: 2,
+                icons: [{
+                    icon: {
+                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        scale: 3,
+                        strokeColor: '#FF0000' // Arrow color
+                    },
+                    offset: '100%'
+                }]
+            });
+
+            polyline.setMap(map);
+        }
+
+        function sendLocationDataToServer(location, status, address, totalDistance) {
+            console.log('Sending data to the server:', location, status, address, totalDistance);
+
+            if (location && location.lat && location.lng) {
+                var latitude = location.lat();
+                var longitude = location.lng();
+
+                if (!isNaN(latitude) && !isNaN(longitude)) {
+                    $.ajax({
+                        url: 'http://localhost:91/pf/server.php',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            latitude: latitude,
+                            longitude: longitude,
+                            timestamp: new Date(),
+                            mappingStatus: status,
+                            clientName: currentClientName,
+                            address: address,
+                            totalDistance: totalDistance,
+                            date: currentDate,
+                        }),
+                        success: function (data) {
+                            console.log('Data sent to the server:', data);
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error sending data to the server:', error);
+                        }
+                    });
+                } else {
+                    console.error('Invalid latitude or longitude values. Data not sent to the server.');
+                }
+            } else {
+                console.error('Invalid location object. Data not sent to the server.');
+            }
+        }
+
+
+            // Fetch initial location when starting tracking
+            function fetchInitialLocation(clientName, date) {
+                console.log('Fetching initial location for:', clientName, 'on date:', date);
                 $.ajax({
                     url: 'http://localhost:91/pf/server.php',
-                    method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({
-                        latitude: latitude,
-                        longitude: longitude,
-                        timestamp: new Date(),
-                        mappingStatus: status,
-                        clientName: currentClientName,
-                        address: address, // Include address in the data
-                        totalDistance: totalDistance, // Include totalDistance in the data
-                    }),
-                    success: function (data) {
-                        console.log('Data sent to the server:', data);
+                    method: 'GET',
+                    data: { clientName: clientName, date: date },
+                    success: function(data) {
+                        console.log('Initial location data received:', data);
+
+                        try {
+                            // Parse the JSON data
+                            var jsonData = JSON.parse(data);
+
+                            if (jsonData && jsonData.initialLatitude && jsonData.initialLongitude) {
+                                var initialLocation = new google.maps.LatLng(jsonData.initialLatitude, jsonData.initialLongitude);
+                                drawInitialMarker(initialLocation);
+                            } else {
+                                console.error('Error fetching initial location:', jsonData.error);
+                            }
+                        } catch (error) {
+                            console.error('Error parsing JSON:', error);
+                        }
                     },
-                    error: function (xhr, status, error) {
-                        console.error('Error sending data to the server:', error);
+                    error: function(xhr, status, error) {
+                        console.error('Error fetching initial location:', error);
                     }
                 });
-            } else {
-                console.error('Invalid latitude or longitude values. Data not sent to the server.');
             }
-        } else {
-            console.error('Invalid location object. Data not sent to the server.');
-        }
-    }
 
+        // Fetch total distance from the server
+        function fetchTotalDistance(clientName, date) {
+            console.log('Fetching total distance for:', clientName, 'on date:', date);
+            $.ajax({
+                url: 'http://localhost:91/pf/server.php',
+                method: 'GET',
+                data: { clientName: clientName, date: date },
+                success: function (data) {
+                    console.log('Total distance data received:', data);
+
+                    try {
+                        var jsonData = JSON.parse(data);
+
+                        // Set the initial total distance
+                        initialTotalDistance = jsonData.totalDistance || 0;
+
+                        // Display the initial total distance
+                        distanceElement.textContent = `${((initialTotalDistance + totalDistance) / 1000).toFixed(2)} kilometers`;
+
+                    } catch (error) {
+                        console.error('Error parsing JSON:', error);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching total distance:', error);
+                }
+            });
+        }
+
+        // Call fetchTotalDistance before starting tracking
+        document.getElementById("startButton").addEventListener("click", function () {
+            var clientName = document.getElementById("clientName").value;
+            var currentDate = getCurrentDate();
+
+            // Fetch initial location and total distance
+            fetchTotalDistance(clientName, currentDate);
+        });
+
+
+        // Draw initial marker and track
+        function drawInitialMarker(location) {
+            console.log('Drawing initial marker at location:', location);
+
+            // Check if location is valid
+            if (location && location.lat && location.lng) {
+                var initialMarker = new google.maps.Marker({
+                    position: location,
+                    map: map,
+                    icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+                });
+
+                // Draw a line between the initial location and the current location
+                if (previousLocation) {
+                    var path = [location, previousLocation];
+                    var polyline = new google.maps.Polyline({
+                        path: path,
+                        geodesic: true,
+                        strokeColor: '#00FF00',
+                        strokeOpacity: 1.0,
+                        strokeWeight: 2
+                    });
+
+                    polyline.setMap(map);
+                }
+            } else {
+                console.error('Invalid initial location:', location);
+            }
+        }
+
+    function getCurrentDate() {
+            var today = new Date();
+            var dd = String(today.getDate()).padStart(2, '0');
+            var mm = String(today.getMonth() + 1).padStart(2, '0');
+            var yyyy = today.getFullYear();
+
+            return yyyy + '-' + mm + '-' + dd;
+        }
+
+ 
     function handleError(error) {
         console.error("Error getting location:", error.message);
     }
+
+
 </script>
-<script async defer
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFzlw87Pf_trlsQjEjUu-4eP9G7WpcLDc&libraries=geometry">
-</script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFzlw87Pf_trlsQjEjUu-4eP9G7WpcLDc&libraries=geometry">
+    </script>
 </body>
+
 </html>
